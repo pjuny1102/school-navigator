@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>학교 길찾기</title>
+<style>
+  body { font-family: Arial; padding: 20px; }
+  select, button { margin: 10px; padding: 5px; }
+</style>
+</head>
+<body>
+
+<h1 id="title">학교 길찾기</h1>
+
+<select onchange="changeLang(this.value)">
+  <option value="ko">한국어</option>
+  <option value="en">English</option>
+</select>
+<label id="startLabel">출발</label>
+<select id="start"></select>
+<label id="endLabel">도착</label>
+<select id="end"></select>
+<button id="findBtn" onclick="findPath()">길찾기</button>
+
+<p id="result"></p>
+
+<button onclick="nextStep()" id="next">다음 안내 ▶</button>
+
+<script>
+
+// =========================
+// 0. 언어
+// =========================
+
+let currentLang = "ko";
+
+
+const LANG = {
+  ko: {
+    start: (room) => `${room}에서 출발합니다.`,
+    arrive: (room) => `${room}에 도착했습니다.`,
+    go_to_stairs: (n) => `${n}번 계단으로 이동하세요.`,
+    go_up: (n) => `${n}번 계단을 이용해 1층으로 올라갑니다.`,
+    go_down: (n) => `${n}번 계단을 이용해 0층으로 내려갑니다.`,
+    go_to: (place) => `${place} 방향으로 이동하세요.`,
+    move: () => `복도를 따라 이동합니다.`
+  },
+
+  en: {
+    start: (room) => `Starting from ${room}.`,
+    arrive: (room) => `You have arrived at ${room}.`,
+    go_to_stairs: (n) => `Go to Stair ${n}.`,
+    go_up: (n) => `Go up to the 1st floor using Stair ${n}.`,
+    go_down: (n) => `Go down to the ground floor using Stair ${n}.`,
+    go_to: (place) => `Move towards ${place}.`,
+    move: () => `Walk along the corridor.`
+  }
+};
+
+const UI_TEXT = {
+  ko: {
+    title: "학교 길찾기",
+    button: "길찾기",
+    start: "출발",
+    arrive: "도착",
+    next: "다음 안내▶"
+  },
+  en: {
+    title: "School Navigator",
+    button: "Find Path",
+    start: "start",
+    arrive: "arrive",
+    next: "next instruction▶"
+  }
+
+};
+
+const ROOM_NAMES = {
+  ko: {
+    Entrance: "입구",
+    Vie: "학생생활부",
+    Infermerie: "보건실",
+    Study: "자습실",
+    CAFETERIA: "급식실",
+    BUS_STOP: "버스 정류장",
+    Library: "도서관"
+  },
+
+  en: {
+    Entrance: "Entrance",
+    Vie: "School Life",
+    Infermerie: "Medical Room",
+    Study: "Study Room",
+    CAFETERIA: "Cafeteria",
+    BUS_STOP: "Bus Stop",
+    Library: "Library"
+  }
+};
+
+function updateUI() {
+  document.getElementById("title").innerText =
+    UI_TEXT[currentLang].title;
+
+  document.getElementById("findBtn").innerText =
+    UI_TEXT[currentLang].button;
+
+  document.getElementById("startLabel").innerText =
+    UI_TEXT[currentLang].start;
+    
+  document.getElementById("endLabel").innerText =
+    UI_TEXT[currentLang].arrive;
+    
+  document.getElementById("next").innerText =
+    UI_TEXT[currentLang].next;
+}
+
+function getRoomName(room) {
+  return ROOM_NAMES[currentLang][room] || room;
+}
+
+function initUI() {
+  const rooms = Object.keys(graph).filter(r => !r.includes("STAIRS"));
+
+  startSel.innerHTML = "";
+  endSel.innerHTML = "";
+
+  rooms.forEach(r => {
+    let displayName = getRoomName(r);
+
+    let o1 = new Option(displayName, r);
+    let o2 = new Option(displayName, r);
+
+    startSel.add(o1);
+    endSel.add(o2);
+  });
+}
+
+function changeLang(lang) {
+  currentLang = lang;
+  updateUI();
+  initUI();
+}
+
+
+
+
+// =========================
+// 1. 그래프 생성 함수
+// =========================
+function connectRooms(rooms, stairNode, graph) {
+  rooms.forEach(room => {
+    graph[room] = [
+      { node: stairNode, weight: 1 }
+    ];
+
+    if (!graph[stairNode]) graph[stairNode] = [];
+    graph[stairNode].push({ node: room, weight: 1 });
+  });
+}
+
+// =========================
+// 2. 그래프 정의
+// =========================
+const graph = {};
+
+// 계단 연결 (층 이동)
+["1","2","3"].forEach(n => {
+  graph["STAIRS_" + n + "_0"] = [
+    { node: "STAIRS_" + n + "_1", weight: 2 }
+  ];
+  graph["STAIRS_" + n + "_1"] = [
+    { node: "STAIRS_" + n + "_0", weight: 2 }
+  ];
+});
+
+// 0층
+connectRooms(
+["Entrance","Vie","Infermerie","Study","A0","A1","A2","A3"],
+"STAIRS_1_0", graph);
+
+connectRooms(
+["Entrance","A4","A5","A6","A7","A8","A9","A10","Lab1","Lab2"],
+"STAIRS_2_0", graph);
+
+connectRooms(
+["Entrance","Art2","B1","B2","B2p","B3","B4","B5","B6","B7","B8","B9","B10","B11"],
+"STAIRS_3_0", graph);
+
+// 1층
+connectRooms(
+["C1","C2","C3","C4","C5","D1","D2","D3","D4"],
+"STAIRS_1_1", graph);
+
+connectRooms(
+["D5","D6","D7","D8","D8p","D9","D10","D11","D12","Lab3","Lab4"],
+"STAIRS_2_1", graph);
+
+connectRooms(
+["E1","E2","E3","E4","E5","E6","E7","Art3","Art4","IT1","IT2","Library"],
+"STAIRS_3_1", graph);
+
+// 외부 연결
+graph["Entrance"].push({ node: "CAFETERIA", weight: 3 });
+graph["Entrance"].push({ node: "BUS_STOP", weight: 4 });
+graph["CAFETERIA"] = [
+  { node: "Entrance", weight: 3 },
+  { node: "BUS_STOP", weight: 5 }
+];
+graph["BUS_STOP"] = [
+  { node: "Entrance", weight: 4 },
+  { node: "CAFETERIA", weight: 5 }
+];
+
+// =========================
+// 3. 다익스트라
+// =========================
+function dijkstra(start, end) {
+  const dist = {};
+  const prev = {};
+  const q = new Set(Object.keys(graph));
+
+  Object.keys(graph).forEach(n => dist[n] = Infinity);
+  dist[start] = 0;
+
+  while (q.size) {
+    let u = [...q].reduce((a,b)=> dist[a]<dist[b]?a:b);
+    q.delete(u);
+
+    if (u === end) break;
+
+    for (let {node, weight} of graph[u] || []) {
+      let alt = dist[u] + weight;
+      if (alt < dist[node]) {
+        dist[node] = alt;
+        prev[node] = u;
+      }
+    }
+  }
+
+  const path = [];
+  let cur = end;
+  while (cur) {
+    path.unshift(cur);
+    cur = prev[cur];
+  }
+  return path;
+}
+
+// =========================
+// 4. UI
+// =========================
+const rooms = Object.keys(graph).filter(r => !r.includes("STAIRS"));
+
+const startSel = document.getElementById("start");
+const endSel = document.getElementById("end");
+
+
+
+  
+
+// =========================
+// 5. 음성안내
+// =========================
+let currentInstructions = [];
+let currentStep = 0;
+
+function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  utterance.lang = currentLang === "ko" ? "ko-KR" : "en-US";
+
+  speechSynthesis.cancel(); // 이전 음성 끊기
+  speechSynthesis.speak(utterance);
+}
+
+function nextStep() {
+  if (currentStep < currentInstructions.length - 1) {
+    currentStep++;
+    speak(currentInstructions[currentStep]);
+  } else {
+    const msg = currentLang === "ko"
+      ? "안내가 종료되었습니다."
+      : "Navigation complete.";
+
+    speak(msg);
+  }
+}
+
+
+// =========================
+// 6. 계단끼리 연결 (같은층)
+// =========================
+function connectStairsFloor(floor) {
+  const stairs = [
+    "STAIRS_1_" + floor,
+    "STAIRS_2_" + floor,
+    "STAIRS_3_" + floor
+  ];
+
+  for (let i = 0; i < stairs.length; i++) {
+    for (let j = 0; j < stairs.length; j++) {
+      if (i !== j) {
+        graph[stairs[i]].push({
+          node: stairs[j],
+          weight: 3
+        });
+      }
+    }
+  }
+}
+
+// 7. 0층, 1층 각각 연결
+connectStairsFloor("0");
+connectStairsFloor("1");
+
+function findPath() {
+  const start = startSel.value;
+  const end = endSel.value;
+
+  const path = dijkstra(start, end);
+
+  currentInstructions = generateInstructions(path);
+  currentStep = 0;
+
+  document.getElementById("result").innerHTML =
+    currentInstructions.join("<br>");
+
+  speak(currentInstructions[0]); // 첫 안내 자동 실행
+}
+
+
+
+function t(key, ...args) {
+  return LANG[currentLang][key](...args);
+}
+
+function generateInstructions(path) {
+  let instructions = [];
+
+  for (let i = 0; i < path.length; i++) {
+    const current = path[i];
+    const next = path[i + 1];
+
+    if (i === 0) {
+      instructions.push(t("start", getRoomName(current)));
+      continue;
+    }
+
+    if (!next) {
+      instructions.push(t("arrive", getRoomName(current)));
+      break;
+    }
+
+    // 계단 이동
+    if (current.includes("STAIRS") && next.includes("STAIRS")) {
+    const stairNum = current.split("_")[1];
+
+    const floorFrom = current.endsWith("_1") ? "1층" : "0층";
+    const floorTo = next.endsWith("_1") ? "1층" : "0층";
+
+    if (floorFrom !== floorTo) {
+    if (floorTo === "1층") {
+      instructions.push(t("go_up", stairNum));
+    } else {
+      instructions.push(t("go_down", stairNum));
+    }
+  }
+  continue;
+}
+
+    // 교실 → 계단
+    if (!current.includes("STAIRS") && next.includes("STAIRS")) {
+      const stairNum = next.split("_")[1];
+      instructions.push(t("go_to_stairs", stairNum));
+      continue;
+    }
+
+    // 계단 → 교실
+    if (current.includes("STAIRS") && !next.includes("STAIRS")) {
+      instructions.push(t("go_to", getRoomName(next)));
+      continue;
+    }
+
+    // 일반 이동
+    instructions.push(t("move", next));
+  }
+
+  return instructions;
+}
+
+initUI();
+updateUI();
+
+</script>
+
+</body>
+</html>
