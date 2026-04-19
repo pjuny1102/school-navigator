@@ -15,6 +15,7 @@
 <select onchange="changeLang(this.value)">
   <option value="ko">한국어</option>
   <option value="en">English</option>
+  <option value="fr">Français</option>
 </select>
 <label id="startLabel">출발</label>
 <select id="start"></select>
@@ -54,7 +55,16 @@ const LANG = {
     go_down: (n) => `Go down to the ground floor using Stair ${n}.`,
     go_to: (place) => `Move towards ${place}.`,
     move: () => `Walk along the corridor.`
-  }
+  },
+ fr: {
+  start: (room) => `Départ de ${room}.`,
+  arrive: (room) => `Vous êtes arrivé à ${room}.`,
+  go_to_stairs: (n) => `Allez à l'escalier ${n}.`,
+  go_up: (n) => `Montez au 1er étage par l'escalier ${n}.`,
+  go_down: (n) => `Descendez au rez-de-chaussée par l'escalier ${n}.`,
+  go_to: (place) => `Dirigez-vous vers ${place}.`,
+  move: () => `Avancez dans le couloir.`
+}
 };
 
 const UI_TEXT = {
@@ -71,7 +81,14 @@ const UI_TEXT = {
     start: "start",
     arrive: "arrive",
     next: "next instruction▶"
-  }
+  },
+  fr: {
+  title: "Navigation scolaire",
+  button: "Trouver le chemin",
+  start: "Départ",
+  arrive: "Arrivée",
+  next: "Instruction suivante ▶"
+}
 
 };
 
@@ -94,7 +111,16 @@ const ROOM_NAMES = {
     CAFETERIA: "Cafeteria",
     BUS_STOP: "Bus Stop",
     Library: "Library"
-  }
+  },
+  fr: {
+  Entrance: "Entrée",
+  Vie: "Vie scolaire",
+  Infermerie: "Infirmerie",
+  Study: "Salle d'étude",
+  CAFETERIA: "Cantine",
+  BUS_STOP: "Arrêt de bus",
+  Library: "Bibliothèque"
+}
 };
 
 function updateUI() {
@@ -267,7 +293,9 @@ let currentStep = 0;
 function speak(text) {
   const utterance = new SpeechSynthesisUtterance(text);
 
-  utterance.lang = currentLang === "ko" ? "ko-KR" : "en-US";
+if (currentLang === "ko") utterance.lang = "ko-KR";
+else if (currentLang === "en") utterance.lang = "en-US";
+else if (currentLang === "fr") utterance.lang = "fr-FR";
 
   speechSynthesis.cancel(); // 이전 음성 끊기
   speechSynthesis.speak(utterance);
